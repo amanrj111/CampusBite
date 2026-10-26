@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          String         @default("USER")
+  walletBalance Float          @default(0)
+  createdAt     DateTime       @default(now())
+  orders        Order[]
+  transactions  Transaction[]
+}
+
+model Category {
+  id    String     @id @default(cuid())
+  name  String
+  icon  String
+  items MenuItem[]
+}
+
+model MenuItem {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  image       String
+  isVeg       Boolean     @default(true)
+  available   Boolean     @default(true)
+  popular     Boolean     @default(false)
+  prepMinutes Int         @default(8)
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  token         Int
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  status        String      @default("PLACED")
+  paymentMethod String
+  paymentStatus String      @default("PAID")
+  subtotal      Float
+  tax           Float
+  total         Float
+  note          String      @default("")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  name       String
+  qty        Int
+  price      Float
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  amount    Float
+  note      String
+  createdAt DateTime @default(now())
+}
+
+model Counter {
+  id    String @id
+  value Int
+}

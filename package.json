@@ -1,0 +1,15 @@
+{
+  "name": "smart-canteen",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Smart Canteen Management System — web, mobile, admin, payments, realtime orders",
+  "scripts": {
+    "install:all": "npm install && npm install --prefix server && npm install --prefix web && npm install --prefix mobile",
+    "setup": "npm run prisma:generate --prefix server && npm run prisma:push --prefix server && npm run seed --prefix server",
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm run dev --prefix server\" \"npm run dev --prefix web\"",
+    "dev:mobile": "npm start --prefix mobile"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
