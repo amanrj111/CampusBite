@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
-import { api, getToken, setToken } from "./api.js";
+import { API_BASE_URL, api, getToken, setToken } from "./api.js";
 
 const Ctx = createContext(null);
 
@@ -46,7 +46,7 @@ export function AppProvider({ children }) {
 
     if (!token || !user?.id) return;
 
-    const socket = io("http://localhost:4000", {
+    const socket = io(API_BASE_URL, {
       auth: { token },
     });
 
@@ -238,3 +238,4 @@ export function AppProvider({ children }) {
 export function useApp() {
   return useContext(Ctx);
 }
+

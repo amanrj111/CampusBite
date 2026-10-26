@@ -1,5 +1,8 @@
 const TOKEN_KEY = "canteen_token";
-const API_BASE_URL = "http://localhost:4000";
+
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:4000"
+).replace(/\/+$/, "");
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -24,8 +27,6 @@ export async function api(path, options = {}) {
   const isFormData =
     typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  // Do not set Content-Type manually for FormData.
-  // The browser must add the multipart boundary.
   if (!isFormData && options.body != null && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api.js";
+import { API_BASE_URL, api } from "../api.js";
 import { useApp } from "../store.jsx";
 
-const API_BASE_URL = "http://localhost:4000";
+
 
 function getImageUrl(image) {
   if (!image) {
@@ -333,3 +333,4 @@ export default function Menu() {
     </main>
   );
 }
+

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../api.js";
+import { API_BASE_URL, api } from "../api.js";
 import { useApp } from "../store.jsx";
 
 const money = (amount) =>
@@ -134,7 +134,7 @@ export default function Admin() {
         formData.append("image", form.image);
       }
 
-      const response = await fetch("http://localhost:4000/api/admin/menu", {
+      const response = await fetch(`${API_BASE_URL}/api/admin/menu`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("canteen_token") || ""}`,
@@ -646,3 +646,4 @@ export default function Admin() {
     </div>
   );
 }
+
