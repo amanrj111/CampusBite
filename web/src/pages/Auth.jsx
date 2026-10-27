@@ -1,10 +1,9 @@
-
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../store.jsx";
 
 export default function Auth() {
-  const { login, register, user } = useApp();
+  const { login, register, loginWithGoogle, user } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,11 +17,146 @@ export default function Auth() {
     password: "",
   });
 
+  const googleButtonRef = useRef(null);
+  const googleLoginInProgress = useRef(false);
+  const googleInitialized = useRef(false);
+  const googleCallbackRef = useRef(null);
+
   function getDestination(account) {
     if (account.role === "ADMIN") return "/admin";
     if (account.role === "KITCHEN") return "/kitchen";
     return "/";
   }
+
+  function getRequestedDestination(account) {
+    const requestedPath = location.state?.from;
+
+    if (
+      account.role === "USER" &&
+      requestedPath?.pathname?.startsWith("/") &&
+      !requestedPath.pathname.startsWith("//") &&
+      requestedPath.pathname !== "/login"
+    ) {
+      return requestedPath.pathname;
+    }
+
+    return getDestination(account);
+  }
+
+  googleCallbackRef.current = async (response) => {
+    if (googleLoginInProgress.current || !response?.credential) {
+      return;
+    }
+
+    googleLoginInProgress.current = true;
+    setLoading(true);
+    setError("");
+
+    try {
+      const account = await loginWithGoogle(response.credential);
+
+      navigate(getRequestedDestination(account), {
+        replace: true,
+      });
+    } catch (err) {
+      setError(err.message || "Google Sign-In failed. Please try again.");
+    } finally {
+      googleLoginInProgress.current = false;
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mode !== "login") return;
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    console.log("Google Client ID loaded:", clientId);
+    console.log("Current website origin:", window.location.origin);
+
+    if (!clientId) {
+      setError("Google Sign-In is not configured.");
+      return;
+    }
+
+    let cancelled = false;
+    let script = null;
+
+    function initializeGoogle() {
+      if (cancelled || !googleButtonRef.current) return;
+
+      const google = window.google?.accounts?.id;
+      if (!google) return;
+
+      if (!googleInitialized.current) {
+        google.initialize({
+          client_id: clientId,
+          callback: (response) => {
+            googleCallbackRef.current?.(response);
+          },
+        });
+
+        googleInitialized.current = true;
+      }
+
+      googleButtonRef.current.innerHTML = "";
+
+      google.renderButton(googleButtonRef.current, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        shape: "rectangular",
+        width: 280,
+      });
+    }
+
+    function handleScriptLoad() {
+      initializeGoogle();
+    }
+
+    function handleScriptError() {
+      if (!cancelled) {
+        setError(
+          "Unable to load Google Sign-In. Please check your connection and try again.",
+        );
+      }
+    }
+
+    if (window.google?.accounts?.id) {
+      initializeGoogle();
+    } else {
+      script = document.querySelector(
+        'script[src="https://accounts.google.com/gsi/client"]',
+      );
+
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.addEventListener("load", handleScriptLoad);
+        script.addEventListener("error", handleScriptError);
+        document.head.appendChild(script);
+      } else {
+        script.addEventListener("load", handleScriptLoad);
+        script.addEventListener("error", handleScriptError);
+
+        // Handle the case where the script loaded before this effect.
+        if (window.google?.accounts?.id) {
+          initializeGoogle();
+        }
+      }
+    }
+
+    return () => {
+      cancelled = true;
+
+      if (script) {
+        script.removeEventListener("load", handleScriptLoad);
+        script.removeEventListener("error", handleScriptError);
+      }
+    };
+  }, [mode]);
 
   if (user) {
     return <Navigate to={getDestination(user)} replace />;
@@ -33,6 +167,7 @@ export default function Auth() {
       ...previous,
       [field]: value,
     }));
+
     setError("");
   }
 
@@ -44,6 +179,7 @@ export default function Auth() {
 
   async function submit(event) {
     event.preventDefault();
+
     if (loading) return;
 
     setError("");
@@ -79,18 +215,9 @@ export default function Auth() {
           ? await login(email, form.password)
           : await register(name, email, form.password);
 
-      // Return to the protected page the user originally requested,
-      // provided that it is an internal application path.
-      const requestedPath = location.state?.from;
-      const destination =
-        account.role === "USER" &&
-        requestedPath?.pathname?.startsWith("/") &&
-        !requestedPath.pathname.startsWith("//") &&
-        requestedPath.pathname !== "/login"
-          ? requestedPath.pathname
-          : getDestination(account);
-
-      navigate(destination, { replace: true });
+      navigate(getRequestedDestination(account), {
+        replace: true,
+      });
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -140,6 +267,7 @@ export default function Auth() {
         />
 
         <label htmlFor="auth-password">Password</label>
+
         <div style={{ position: "relative" }}>
           <input
             id="auth-password"
@@ -209,6 +337,31 @@ export default function Auth() {
               ? "Sign in"
               : "Create account"}
         </button>
+
+        {mode === "login" && (
+          <>
+            <div
+              style={{
+                textAlign: "center",
+                margin: "18px 0",
+                color: "#6b7280",
+                fontSize: 14,
+              }}
+            >
+              OR CONTINUE WITH
+            </div>
+
+            <div
+              ref={googleButtonRef}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                minHeight: 40,
+                marginBottom: 16,
+              }}
+            />
+          </>
+        )}
 
         <button
           type="button"

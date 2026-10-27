@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
@@ -13,16 +12,28 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    password: { type: String, required: true },
-    role: { type: String, default: "USER" },
+    password: {
+      type: String,
+      required: false,
+      select: false,
+    },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    role: {
+      type: String,
+      default: "USER",
+      enum: ["USER", "ADMIN", "KITCHEN"],
+    },
     walletBalance: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
   },
   {
     collection: "users",
     versionKey: false,
-  }
+  },
 );
 
-export default mongoose.models.User ||
-  mongoose.model("User", userSchema);
+export default mongoose.models.User || mongoose.model("User", userSchema);

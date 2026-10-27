@@ -198,6 +198,19 @@ export function AppProvider({ children }) {
     return data.user;
   }
 
+  async function loginWithGoogle(credential) {
+    const data = await api("/api/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    });
+
+    setToken(data.token);
+    setUser(data.user);
+
+    notify("Signed in with Google successfully!", "success");
+    return data.user;
+  }
+
   function logout() {
     setToken(null);
     setUser(null);
@@ -222,6 +235,7 @@ export function AppProvider({ children }) {
       clearCart,
       login,
       register,
+      loginWithGoogle,
       logout,
       toast,
       notify,
@@ -238,4 +252,3 @@ export function AppProvider({ children }) {
 export function useApp() {
   return useContext(Ctx);
 }
-

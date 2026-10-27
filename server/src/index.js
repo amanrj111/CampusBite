@@ -1,3 +1,4 @@
+import { OAuth2Client } from "google-auth-library";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
@@ -28,6 +29,7 @@ import {
 } from "./auth.js";
 
 import { connectMongoDB } from "./config/db.js";
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
 const server = http.createServer(app);
@@ -217,9 +219,13 @@ app.post("/api/auth/login", async (req, res) => {
       email: String(req.body.email || "")
         .toLowerCase()
         .trim(),
-    });
+    }).select("+password");
 
-    if (!user || !bcrypt.compareSync(req.body.password || "", user.password)) {
+    if (
+      !user ||
+      !user.password ||
+      !bcrypt.compareSync(req.body.password || "", user.password)
+    ) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
@@ -230,6 +236,102 @@ app.post("/api/auth/login", async (req, res) => {
   } catch (error) {
     console.error("Login failed:", error.message);
     return res.status(500).json({ error: "Login failed" });
+  }
+});
+
+// -------------------- GOOGLE AUTH --------------------
+
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { credential } = req.body || {};
+
+    if (!credential || typeof credential !== "string") {
+      return res.status(400).json({
+        error: "Google credential is required",
+      });
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error("GOOGLE_CLIENT_ID is not configured");
+
+      return res.status(500).json({
+        error: "Google authentication is not configured",
+      });
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (
+      !payload ||
+      !payload.sub ||
+      !payload.email ||
+      payload.email_verified !== true
+    ) {
+      return res.status(401).json({
+        error: "Google account verification failed",
+      });
+    }
+
+    const googleId = payload.sub;
+    const email = payload.email.toLowerCase().trim();
+    const name = String(payload.name || "").trim();
+
+    // Find an account already linked to this Google account.
+    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      // Check whether an account with this verified email exists.
+      user = await User.findOne({ email });
+
+      if (user) {
+        // Do not silently replace a different Google account link.
+        if (user.googleId && user.googleId !== googleId) {
+          return res.status(409).json({
+            error: "This email is already linked to another Google account.",
+          });
+        }
+
+        // Link the verified Google account to the existing user.
+        user.googleId = googleId;
+        await user.save();
+      } else {
+        // New Google accounts must receive the normal USER role.
+        const id = createId();
+
+        user = await User.create({
+          _id: id,
+          id,
+          name: name || email.split("@")[0],
+          email,
+          googleId,
+          role: "USER",
+          walletBalance: 100,
+        });
+      }
+    }
+
+    return res.json({
+      token: signToken(user),
+      user: publicUser(user),
+    });
+  } catch (error) {
+    console.error("Google authentication failed:", error.message);
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error:
+          "An account with this email or Google identity already exists. Please try signing in again.",
+      });
+    }
+
+    return res.status(401).json({
+      error: "Google sign-in failed. Please try again.",
+    });
   }
 });
 
