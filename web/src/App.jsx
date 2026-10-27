@@ -1,11 +1,7 @@
-import {
-  NavLink,
-  Navigate,
-  Route,
-  Routes,
-  useNavigate,
-} from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useApp } from "./store.jsx";
+import Toast from "./components/common/Toast.jsx";
+
 import Menu from "./pages/Menu.jsx";
 import Auth from "./pages/Auth.jsx";
 import Cart from "./pages/Cart.jsx";
@@ -14,6 +10,8 @@ import Orders from "./pages/Orders.jsx";
 import Wallet from "./pages/Wallet.jsx";
 import Admin from "./pages/Admin.jsx";
 import Kitchen from "./pages/Kitchen.jsx";
+
+import Navbar from "./components/layout/Navbar.jsx";
 
 function Guard({ roles, children }) {
   const { user, ready } = useApp();
@@ -26,7 +24,9 @@ function Guard({ roles, children }) {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;
@@ -36,65 +36,11 @@ function Guard({ roles, children }) {
 }
 
 export default function App() {
-  const { user, cartCount, logout, toast, dismissToast } = useApp();
-  const nav = useNavigate();
+  const { toast, dismissToast } = useApp();
 
   return (
     <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <NavLink to="/" className="logo">
-            <div className="logo-mark">🍱</div>
-            CampusBite
-          </NavLink>
-
-          <nav className="nav">
-            {(!user || user.role === "USER") && (
-              <>
-                <NavLink to="/">Menu</NavLink>
-                <NavLink to="/orders">Orders</NavLink>
-                <NavLink to="/wallet">Wallet</NavLink>
-
-                <NavLink to="/cart">
-                  Cart{" "}
-                  {cartCount > 0 && <span className="badge">{cartCount}</span>}
-                </NavLink>
-              </>
-            )}
-
-            {user?.role === "ADMIN" && (
-              <>
-                <NavLink to="/admin">Admin</NavLink>
-                <NavLink to="/kitchen">Kitchen</NavLink>
-              </>
-            )}
-
-            {user?.role === "KITCHEN" && (
-              <NavLink to="/kitchen">Kitchen board</NavLink>
-            )}
-
-            {user ? (
-              <>
-                <span className="tiny hide">{user.name}</span>
-
-                <button
-                  className="ghost"
-                  onClick={() => {
-                    logout();
-                    nav("/login");
-                  }}
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <NavLink to="/login" className="btn">
-                Sign in
-              </NavLink>
-            )}
-          </nav>
-        </div>
-      </header>
+      {location.pathname !== "/login" && <Navbar />}
 
       <Routes>
         <Route path="/" element={<Menu />} />
@@ -155,33 +101,7 @@ export default function App() {
         />
       </Routes>
 
-      {toast && (
-        <div
-          key={toast.id}
-          className={`toast toast-${toast.type}`}
-          role="status"
-          aria-live="polite"
-        >
-          <span className="toast-icon">
-            {toast.type === "success"
-              ? "✓"
-              : toast.type === "error"
-                ? "✕"
-                : "ℹ"}
-          </span>
-
-          <span>{toast.message}</span>
-
-          <button
-            type="button"
-            className="toast-close"
-            onClick={dismissToast}
-            aria-label="Close notification"
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <Toast toast={toast} onDismiss={dismissToast} />
     </>
   );
 }

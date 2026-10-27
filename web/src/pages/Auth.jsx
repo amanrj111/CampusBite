@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "../store.jsx";
+import LoginPage from "../components/auth/LoginPage.jsx";
 
 export default function Auth() {
   const { login, register, loginWithGoogle, user } = useApp();
@@ -226,155 +227,17 @@ export default function Auth() {
   }
 
   return (
-    <main className="auth">
-      <form onSubmit={submit} noValidate>
-        <h2>{mode === "login" ? "Welcome back 👋" : "Create your account"}</h2>
-
-        <p className="tiny">
-          {mode === "login"
-            ? "Sign in to order your favourite campus meals."
-            : "Join CampusBite and enjoy convenient campus dining."}
-        </p>
-
-        {mode === "register" && (
-          <>
-            <label htmlFor="auth-name">Full name</label>
-            <input
-              id="auth-name"
-              type="text"
-              placeholder="Enter your name"
-              autoComplete="name"
-              value={form.name}
-              onChange={(event) => updateField("name", event.target.value)}
-              required
-              maxLength={100}
-              disabled={loading}
-            />
-          </>
-        )}
-
-        <label htmlFor="auth-email">Email address</label>
-        <input
-          id="auth-email"
-          type="email"
-          placeholder="you@example.com"
-          autoComplete="email"
-          value={form.email}
-          onChange={(event) => updateField("email", event.target.value)}
-          required
-          maxLength={254}
-          disabled={loading}
-        />
-
-        <label htmlFor="auth-password">Password</label>
-
-        <div style={{ position: "relative" }}>
-          <input
-            id="auth-password"
-            type={showPassword ? "text" : "password"}
-            placeholder={
-              mode === "register"
-                ? "At least 8 characters"
-                : "Enter your password"
-            }
-            autoComplete={
-              mode === "login" ? "current-password" : "new-password"
-            }
-            value={form.password}
-            onChange={(event) => updateField("password", event.target.value)}
-            required
-            minLength={mode === "register" ? 8 : undefined}
-            style={{ width: "100%", paddingRight: 85 }}
-            disabled={loading}
-          />
-
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => setShowPassword((previous) => !previous)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            aria-pressed={showPassword}
-            disabled={loading}
-            style={{
-              position: "absolute",
-              right: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              padding: "4px 8px",
-            }}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-
-        {error && (
-          <p
-            role="alert"
-            style={{
-              color: "#dc2626",
-              fontSize: 14,
-              marginTop: 12,
-            }}
-          >
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          className="btn"
-          disabled={loading}
-          style={{
-            width: "100%",
-            marginTop: 16,
-            opacity: loading ? 0.7 : 1,
-            cursor: loading ? "wait" : "pointer",
-          }}
-        >
-          {loading
-            ? "Please wait..."
-            : mode === "login"
-              ? "Sign in"
-              : "Create account"}
-        </button>
-
-        {mode === "login" && (
-          <>
-            <div
-              style={{
-                textAlign: "center",
-                margin: "18px 0",
-                color: "#6b7280",
-                fontSize: 14,
-              }}
-            >
-              OR CONTINUE WITH
-            </div>
-
-            <div
-              ref={googleButtonRef}
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                minHeight: 40,
-                marginBottom: 16,
-              }}
-            />
-          </>
-        )}
-
-        <button
-          type="button"
-          className="ghost"
-          disabled={loading}
-          style={{ width: "100%", marginTop: 10 }}
-          onClick={switchMode}
-        >
-          {mode === "login"
-            ? "New to CampusBite? Create an account"
-            : "Already have an account? Sign in"}
-        </button>
-      </form>
-    </main>
+    <LoginPage
+      mode={mode}
+      form={form}
+      updateField={updateField}
+      submit={submit}
+      showPassword={showPassword}
+      setShowPassword={setShowPassword}
+      loading={loading}
+      error={error}
+      switchMode={switchMode}
+      googleButtonRef={googleButtonRef}
+    />
   );
 }
