@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE_URL, api } from "../api.js";
 import { useApp } from "../store.jsx";
 
@@ -31,6 +31,10 @@ export default function Admin() {
     popular: false,
     image: null,
   });
+
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [existingImage, setExistingImage] = useState("");
+  const editFormRef = useRef(null);
 
   const [imagePreview, setImagePreview] = useState("");
 
@@ -121,9 +125,9 @@ export default function Admin() {
     e.preventDefault();
 
     try {
-      // Send multipart/form-data so the server can receive the image file.
       const formData = new FormData();
-      formData.append("name", form.name);
+
+      formData.append("name", form.name.trim());
       formData.append("description", form.description);
       formData.append("price", String(Number(form.price)));
       formData.append("isVeg", String(form.isVeg));
@@ -134,34 +138,57 @@ export default function Admin() {
         formData.append("image", form.image);
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/admin/menu`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("canteen_token") || ""}`,
+      const isEditing = Boolean(editingItemId);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/admin/menu${isEditing ? `/${editingItemId}` : ""}`,
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("canteen_token") || ""}`,
+          },
+          body: formData,
         },
-        body: formData,
-      });
+      );
 
       const result = await response.json().catch(() => ({}));
+
       if (!response.ok) {
         throw new Error(
-          result.error || result.message || "Failed to add menu item",
+          result.error ||
+            result.message ||
+            `Failed to ${isEditing ? "update" : "add"} menu item`,
         );
       }
 
-      notify("Menu item added successfully");
-      setForm((current) => ({
-        ...current,
+      notify(
+        result.message ||
+          (isEditing
+            ? "Menu item updated successfully"
+            : "Menu item added successfully"),
+      );
+
+      setEditingItemId(null);
+      setExistingImage("");
+      setImagePreview("");
+
+      setForm({
         name: "",
         description: "",
         price: 50,
+        isVeg: true,
+        categoryId: menu[0]?.id || "",
         popular: false,
         image: null,
-      }));
+      });
+
+      // Clear the file input so the same image can be selected again.
+      e.target.reset();
 
       await load();
     } catch (err) {
-      notify(err.message || "Failed to add menu item");
+      console.error("Menu item save failed:", err);
+      notify(err.message || "Failed to save menu item");
     }
   }
 
@@ -187,6 +214,71 @@ export default function Admin() {
     } catch (err) {
       console.error("Availability update failed:", err);
       notify(err.message || "Failed to update availability");
+    }
+  }
+
+  function startEdit(item) {
+    setEditingItemId(item.id);
+    setExistingImage(item.image || "");
+    setImagePreview("");
+
+    setForm({
+      name: item.name || "",
+      description: item.description || "",
+      price: item.price ?? 0,
+      isVeg: item.isVeg ?? true,
+      categoryId: item.categoryId || "",
+      popular: item.popular ?? false,
+      image: null,
+    });
+
+    // Scroll to the exact menu form, not the top of the page.
+    requestAnimationFrame(() => {
+      document.getElementById("menu-item-form")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
+  function cancelEdit() {
+    setEditingItemId(null);
+    setExistingImage("");
+    setImagePreview("");
+
+    setForm({
+      name: "",
+      description: "",
+      price: 50,
+      isVeg: true,
+      categoryId: menu[0]?.id || "",
+      popular: false,
+      image: null,
+    });
+  }
+
+  async function deleteItem(item) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${item.name}"? This action cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const result = await api(`/api/admin/menu/${item.id}`, {
+        method: "DELETE",
+      });
+
+      if (editingItemId === item.id) {
+        cancelEdit();
+      }
+
+      notify(result.message || `${item.name} deleted successfully`);
+
+      await load();
+    } catch (err) {
+      console.error("Menu item deletion failed:", err);
+      notify(err.message || "Failed to delete menu item");
     }
   }
 
@@ -444,11 +536,21 @@ export default function Admin() {
       </section>
 
       {/* Add menu item */}
-      <section className="admin-panel">
+      <section
+        id="menu-item-form"
+        ref={editFormRef}
+        className="admin-panel"
+        style={{ scrollMarginTop: "100px" }}
+      >
         <div className="admin-section-heading">
           <div>
-            <h3>Add Menu Item</h3>
-            <p className="tiny">Add a new item to your canteen menu.</p>
+            <h3>{editingItemId ? "Edit Menu Item" : "Add Menu Item"}</h3>
+
+            <p className="tiny">
+              {editingItemId
+                ? "Update the food item's details below."
+                : "Add a new item to your canteen menu."}
+            </p>
           </div>
         </div>
 
@@ -487,9 +589,9 @@ export default function Admin() {
               }
             />
             <span className="tiny">Choose a JPG, PNG, or WebP image.</span>
-            {imagePreview && (
+            {(imagePreview || existingImage) && (
               <img
-                src={imagePreview}
+                src={imagePreview || existingImage}
                 alt="Food item preview"
                 className="admin-image-preview"
                 style={{
@@ -553,8 +655,14 @@ export default function Admin() {
           </label>
 
           <button className="btn" type="submit">
-            + Add Item
+            {editingItemId ? "Save Changes" : "+ Add Item"}
           </button>
+
+          {editingItemId && (
+            <button className="ghost" type="button" onClick={cancelEdit}>
+              Cancel Editing
+            </button>
+          )}
         </form>
       </section>
 
@@ -594,10 +702,30 @@ export default function Admin() {
                   {item.available === false ? "Sold out" : "Available"}
                 </span>
 
-                <button className="ghost" onClick={() => toggle(item)}>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => toggle(item)}
+                >
                   {item.available === false
                     ? "Make available"
                     : "Mark sold out"}
+                </button>
+
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => startEdit(item)}
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => deleteItem(item)}
+                >
+                  Delete
                 </button>
               </div>
             </div>
@@ -646,4 +774,3 @@ export default function Admin() {
     </div>
   );
 }
-

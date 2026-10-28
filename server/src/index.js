@@ -566,6 +566,7 @@ app.patch(
   "/api/orders/:id/cancel",
   auth,
   requireRole("USER"),
+
   async (req, res) => {
     let session;
 
@@ -1058,6 +1059,154 @@ app.patch(
 
       return res.status(500).json({
         error: "Could not update menu availability.",
+      });
+    }
+  },
+);
+
+// -------------------- EDIT MENU ITEM --------------------
+
+app.put(
+  "/api/admin/menu/:id",
+  auth,
+  requireRole("ADMIN"),
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const {
+        name,
+        description,
+        price,
+        isVeg,
+        available,
+        popular,
+        prepMinutes,
+        categoryId,
+      } = req.body;
+
+      // Validate required fields.
+      if (
+        !String(name || "").trim() ||
+        !categoryId ||
+        !Number.isFinite(Number(price)) ||
+        Number(price) < 0
+      ) {
+        return res.status(400).json({
+          error: "Name, category and a valid non-negative price are required.",
+        });
+      }
+
+      // Confirm the selected category exists.
+      const category = await Category.findOne({ id: categoryId });
+
+      if (!category) {
+        return res.status(400).json({
+          error: "Category not found.",
+        });
+      }
+
+      // Preserve the existing image unless a new one is uploaded.
+      const existingItem = await MenuItem.findOne({
+        id: req.params.id,
+      });
+
+      if (!existingItem) {
+        return res.status(404).json({
+          error: "Menu item not found.",
+        });
+      }
+
+      const updates = {
+        name: String(name).trim(),
+        description: String(description || "").trim(),
+        price: Number(price),
+        categoryId,
+        isVeg: String(isVeg) === "true",
+        available:
+          available === undefined
+            ? existingItem.available
+            : String(available) === "true",
+        popular:
+          popular === undefined
+            ? existingItem.popular
+            : String(popular) === "true",
+        prepMinutes:
+          prepMinutes === undefined
+            ? existingItem.prepMinutes
+            : Number(prepMinutes),
+      };
+
+      // Validate preparation time.
+      if (!Number.isFinite(updates.prepMinutes) || updates.prepMinutes < 1) {
+        return res.status(400).json({
+          error: "Preparation time must be at least 1 minute.",
+        });
+      }
+
+      // Replace the image only when a new file is uploaded.
+      if (req.file) {
+        updates.image = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+      }
+
+      const item = await MenuItem.findOneAndUpdate(
+        { id: req.params.id },
+        { $set: updates },
+        {
+          new: true,
+          runValidators: true,
+        },
+      );
+
+      return res.json({
+        message: "Menu item updated successfully.",
+        item,
+      });
+    } catch (error) {
+      console.error("Menu item update failed:", error);
+
+      if (error instanceof multer.MulterError) {
+        const message =
+          error.code === "LIMIT_FILE_SIZE"
+            ? "Image is too large. Maximum size is 5 MB."
+            : error.message;
+
+        return res.status(400).json({ error: message });
+      }
+
+      return res.status(500).json({
+        error: "Could not update menu item.",
+      });
+    }
+  },
+);
+
+// -------------------- DELETE MENU ITEM --------------------
+
+app.delete(
+  "/api/admin/menu/:id",
+  auth,
+  requireRole("ADMIN"),
+  async (req, res) => {
+    try {
+      const item = await MenuItem.findOneAndDelete({
+        id: req.params.id,
+      });
+
+      if (!item) {
+        return res.status(404).json({
+          error: "Menu item not found.",
+        });
+      }
+
+      return res.json({
+        message: `${item.name} deleted successfully.`,
+        item,
+      });
+    } catch (error) {
+      console.error("Menu item deletion failed:", error);
+
+      return res.status(500).json({
+        error: "Could not delete menu item.",
       });
     }
   },
