@@ -1,4 +1,3 @@
-
 import "dotenv/config";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
@@ -90,16 +89,14 @@ async function main() {
   let currentEmail = "";
 
   if (choice === "1") {
-    currentEmail = (
-      await ask("Current admin email: ")
-    ).trim().toLowerCase();
+    currentEmail = (await ask("Current admin email: ")).trim().toLowerCase();
   }
 
   const email = (
-    await ask(
-      choice === "1" ? "New admin email: " : "New admin email: "
-    )
-  ).trim().toLowerCase();
+    await ask(choice === "1" ? "New admin email: " : "New admin email: ")
+  )
+    .trim()
+    .toLowerCase();
 
   const name = (await ask("Admin name: ")).trim();
 

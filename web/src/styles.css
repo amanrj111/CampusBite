@@ -3825,3 +3825,208 @@ textarea {
   outline: 3px solid #fdba74;
   outline-offset: 3px;
 }
+
+/* =========================================
+   CAMPUSBITE — PREMIUM CHECKOUT UI
+========================================= */
+
+.cart-line {
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e7eee8;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(22, 101, 52, 0.04);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.cart-line:hover {
+  border-color: #bbf7d0;
+  box-shadow: 0 8px 24px rgba(22, 101, 52, 0.08);
+  transform: translateY(-2px);
+}
+
+.cart-line img {
+  flex-shrink: 0;
+  width: 82px;
+  height: 82px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #f0fdf4;
+}
+
+.cart-line .grow strong {
+  color: #1c2e22;
+  line-height: 1.5;
+}
+
+.qty {
+  flex-shrink: 0;
+  padding: 5px;
+  border: 1px solid #dce8de;
+  border-radius: 12px;
+  background: #f8fcf8;
+}
+
+.qty button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9px;
+  background: #e8f7ec;
+  color: #166534;
+  font-size: 19px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.qty button:hover:not(:disabled) {
+  background: #15803d;
+  color: #ffffff;
+}
+
+.qty button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qty span {
+  min-width: 20px;
+  color: #1c2e22;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* Payment method cards */
+
+.pay {
+  gap: 12px;
+}
+
+.pay label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 17px;
+  border: 1px solid #e1e9e2;
+  border-radius: 16px;
+  background: #ffffff;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.pay label:hover {
+  border-color: #86c99a;
+  background: #f8fdf9;
+}
+
+.pay label:has(input:checked) {
+  border-color: #15803d;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.08);
+}
+
+.pay input[type="radio"] {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin: 3px 0 0;
+  accent-color: #15803d;
+  cursor: pointer;
+}
+
+.pay label strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #1c2e22;
+  font-size: 14px;
+}
+
+.pay label .tiny {
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.pay label:has(input:disabled) {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Kitchen note */
+
+#kitchen-note {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  padding: 14px 16px;
+  border: 1px solid #dce8de;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1c2e22;
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#kitchen-note:focus {
+  outline: none;
+  border-color: #15803d;
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.1);
+}
+
+#kitchen-note:disabled {
+  background: #f5f7f5;
+  cursor: not-allowed;
+}
+
+/* Checkout bill summary */
+
+.card:has(> h2) {
+  border: 1px solid #e4ece5;
+  border-radius: 20px;
+  box-shadow: 0 8px 28px rgba(22, 101, 52, 0.05);
+}
+
+.card h2 {
+  color: #1c2e22;
+}
+
+/* Checkout layout on mobile */
+
+@media (max-width: 600px) {
+  .pay {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-line {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .cart-line img {
+    width: 68px;
+    height: 68px;
+  }
+
+  .cart-line .grow {
+    min-width: 0;
+  }
+
+  .cart-line .qty {
+    margin-left: auto;
+  }
+}

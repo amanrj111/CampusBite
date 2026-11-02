@@ -3,6 +3,37 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import { useApp } from "../store.jsx";
 
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(true), {
+        once: true,
+      });
+      existingScript.addEventListener("error", () => resolve(false), {
+        once: true,
+      });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+
+    document.body.appendChild(script);
+  });
+}
+
 export default function Cart() {
   const { cart, changeQty, cartTotal, clearCart, setUser, notify } = useApp();
 
@@ -16,12 +47,9 @@ export default function Cart() {
   const tax = Math.round(subtotal * 0.05 * 100) / 100;
   const total = Math.round((subtotal + tax) * 100) / 100;
 
-  async function checkout() {
-    if (busy) return;
-
+  function getCartItems() {
     if (!cart.length) {
-      notify("Your cart is empty.");
-      return;
+      throw new Error("Your cart is empty.");
     }
 
     const invalidItem = cart.find(
@@ -32,41 +60,211 @@ export default function Cart() {
     );
 
     if (invalidItem) {
-      notify("Please check your cart quantities and try again.");
-      return;
+      throw new Error("Please check your cart quantities and try again.");
     }
+
+    return cart.map((item) => ({
+      menuItemId: item.menuItemId,
+      qty: Number(item.qty),
+    }));
+  }
+
+  // Existing CampusBite wallet and counter checkout.
+  async function checkoutExistingMethod(items) {
+    const data = await api("/api/orders", {
+      method: "POST",
+      body: JSON.stringify({
+        items,
+        paymentMethod: method,
+        note: note.trim(),
+      }),
+    });
+
+    if (!data?.order?.id) {
+      throw new Error(
+        "Order response was incomplete. Please check your orders before retrying.",
+      );
+    }
+
+    if (data.user) {
+      setUser(data.user);
+    }
+
+    clearCart();
+    notify("Order placed successfully!");
+
+    nav(`/orders/${data.order.id}`, { replace: true });
+  }
+
+  // Razorpay checkout for UPI and card payments.
+  async function checkoutRazorpay(items) {
+    const scriptLoaded = await loadRazorpayScript();
+
+    if (!scriptLoaded) {
+      throw new Error(
+        "Unable to load Razorpay Checkout. Check your internet connection and try again.",
+      );
+    }
+
+    // The backend calculates the amount using actual menu prices.
+    const orderData = await api("/api/payments/create-order", {
+      method: "POST",
+      body: JSON.stringify({
+        items,
+        note: note.trim(),
+      }),
+    });
+
+    if (
+      !orderData?.id ||
+      !orderData?.keyId ||
+      !Number.isSafeInteger(orderData.amount) ||
+      orderData.amount <= 0
+    ) {
+      throw new Error("The server returned an invalid Razorpay order.");
+    }
+
+    return new Promise((resolve, reject) => {
+      let handled = false;
+      let verificationInProgress = false;
+      let razorpayInstance;
+
+      const finish = () => {
+        if (!handled) {
+          handled = true;
+          setBusy(false);
+        }
+      };
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: "CampusBite",
+        description: "Campus canteen order",
+        order_id: orderData.id,
+
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: "Pay using UPI",
+                instruments: [
+                  {
+                    method: "upi",
+                  },
+                ],
+              },
+            },
+            sequence: ["block.upi"],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
+
+        prefill: {},
+
+        theme: {
+          color: "#15803d",
+        },
+
+        handler: async (response) => {
+          if (verificationInProgress || handled) return;
+
+          verificationInProgress = true;
+
+          try {
+            // Verify the payment on the backend.
+            const result = await api("/api/payments/verify-payment", {
+              method: "POST",
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            if (!result?.success || !result?.order?.id) {
+              throw new Error(
+                "Payment verification did not return a valid order.",
+              );
+            }
+
+            clearCart();
+            notify("Payment successful! Your order has been placed.");
+
+            finish();
+            nav(`/orders/${result.order.id}`, { replace: true });
+
+            resolve(result);
+          } catch (error) {
+            finish();
+
+            notify(
+              error.message ||
+                "We couldn't confirm your payment. Check your order status before paying again.",
+            );
+
+            reject(error);
+          }
+        },
+
+        modal: {
+          ondismiss: () => {
+            if (!handled) {
+              finish();
+              reject(new Error("Payment cancelled. Your cart is unchanged."));
+            }
+          },
+        },
+      };
+
+      try {
+        razorpayInstance = new window.Razorpay(options);
+
+        razorpayInstance.on("payment.failed", (response) => {
+          if (handled) return;
+
+          const message =
+            response?.error?.description || "Payment failed. Please try again.";
+
+          finish();
+          notify(message);
+          reject(new Error(message));
+        });
+
+        razorpayInstance.open();
+      } catch (error) {
+        finish();
+        reject(error);
+      }
+    });
+  }
+
+  async function checkout() {
+    if (busy) return;
 
     setBusy(true);
 
     try {
-      const data = await api("/api/orders", {
-        method: "POST",
-        body: JSON.stringify({
-          items: cart.map((item) => ({
-            menuItemId: item.menuItemId,
-            qty: Number(item.qty),
-          })),
-          paymentMethod: method,
-          note: note.trim(),
-        }),
-      });
+      const items = getCartItems();
 
-      if (!data?.order?.id) {
-        throw new Error(
-          "Order response was incomplete. Please check your orders before retrying.",
+      if (method === "UPI" || method === "CARD") {
+        await checkoutRazorpay(items);
+      } else {
+        await checkoutExistingMethod(items);
+      }
+    } catch (error) {
+      // Razorpay errors may already have been shown by its callbacks.
+      if (
+        !error.message?.startsWith("Payment cancelled.") &&
+        error.message !== "Payment failed. Please try again."
+      ) {
+        notify(
+          error.message || "Unable to place your order. Please try again.",
         );
       }
-
-      if (data.user) {
-        setUser(data.user);
-      }
-
-      clearCart();
-      notify("Order placed successfully!");
-
-      nav(`/orders/${data.order.id}`, { replace: true });
-    } catch (error) {
-      notify(error.message || "Unable to place your order. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -207,12 +405,12 @@ export default function Cart() {
             {
               value: "UPI",
               label: "UPI",
-              description: "Demo payment.",
+              description: "Pay securely using Razorpay test mode.",
             },
             {
               value: "CARD",
               label: "Debit / credit card",
-              description: "Demo payment.",
+              description: "Pay using Razorpay test cards.",
             },
             {
               value: "COUNTER",

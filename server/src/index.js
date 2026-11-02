@@ -29,6 +29,7 @@ import {
 } from "./auth.js";
 
 import { connectMongoDB } from "./config/db.js";
+import paymentRoutes from "./payments/payment.routes.js";
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
@@ -40,6 +41,7 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/payments", paymentRoutes);
 // -------------------- MENU IMAGE UPLOADS --------------------
 
 const __filename = fileURLToPath(import.meta.url);
@@ -415,8 +417,10 @@ app.post("/api/orders", auth, requireRole("USER"), async (req, res) => {
       return res.status(400).json({ error: "Cart is empty" });
     }
 
-    if (!["WALLET", "UPI", "CARD", "COUNTER"].includes(paymentMethod)) {
-      return res.status(400).json({ error: "Choose a payment method" });
+    if (!["WALLET", "COUNTER"].includes(paymentMethod)) {
+      return res.status(400).json({
+        error: "Choose WALLET or COUNTER. Online payments must use Razorpay.",
+      });
     }
 
     const ids = [...new Set(items.map((item) => item.menuItemId))];

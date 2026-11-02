@@ -2,9 +2,7 @@ import mongoose from "mongoose";
 
 const menuItemSchema = new mongoose.Schema(
   {
-    _id: {
-      type: String,
-    },
+    _id: { type: String },
 
     id: {
       type: String,
