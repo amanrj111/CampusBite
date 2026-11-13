@@ -1,0 +1,103 @@
+/* Main Footer */
+.campus-footer {
+  width: 100%;
+  background: #111827;
+  color: #ffffff;
+  padding: 45px 7% 20px;
+  margin-top: 50px;
+  box-sizing: border-box;
+}
+
+/* Footer Container */
+.footer-container {
+  max-width: 1200px;
+  margin: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  padding-bottom: 35px;
+}
+
+/* Brand */
+.footer-brand h2 {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 12px;
+  letter-spacing: -1px;
+}
+
+.footer-brand h2 span {
+  color: #f59e0b;
+}
+
+.footer-brand p,
+.footer-info p {
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1.8;
+  max-width: 380px;
+  margin: 0;
+}
+
+/* Mission */
+.footer-info h3 {
+  font-size: 17px;
+  margin: 5px 0 12px;
+  color: #f59e0b;
+}
+
+/* Bottom Section */
+.footer-bottom {
+  max-width: 1200px;
+  margin: auto;
+  border-top: 1px solid #374151;
+  padding-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footer-bottom p {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.footer-bottom span {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+/* Hover Effects */
+.footer-brand h2 {
+  transition: color 0.3s ease;
+}
+
+.footer-brand h2:hover {
+  color: #f59e0b;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .campus-footer {
+    padding: 35px 20px 18px;
+    margin-top: 35px;
+  }
+
+  .footer-container {
+    flex-direction: column;
+    gap: 25px;
+  }
+
+  .footer-brand h2 {
+    font-size: 25px;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+}

@@ -10,6 +10,7 @@ import Orders from "./pages/Orders.jsx";
 import Wallet from "./pages/Wallet.jsx";
 import Admin from "./pages/Admin.jsx";
 import Kitchen from "./pages/Kitchen.jsx";
+import Footer from "./components/Footer";
 
 import Navbar from "./components/layout/Navbar.jsx";
 
@@ -37,6 +38,7 @@ function Guard({ roles, children }) {
 
 export default function App() {
   const { toast, dismissToast } = useApp();
+  const location = useLocation();
 
   return (
     <>
@@ -100,6 +102,8 @@ export default function App() {
           }
         />
       </Routes>
+
+      {location.pathname !== "/login" && <Footer />}
 
       <Toast toast={toast} onDismiss={dismissToast} />
     </>
